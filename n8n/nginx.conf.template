@@ -48,18 +48,26 @@ http {
                              application/javascript application/json;
             sub_filter_once off;
 
-            # 1) Set window.BASE_PATH so JS API calls use the ingress path
+            # 1) Set window.BASE_PATH so JS API/WebSocket calls route
+            #    through the ingress proxy.
             sub_filter "window.BASE_PATH = '/'" "window.BASE_PATH = '{{INGRESS_ENTRY}}'";
 
             # 2) Convert absolute asset/static paths to relative ones.
-            #    The browser resolves relatives against the ingress URL,
-            #    sending them back through the proxy automatically.
-            sub_filter "=\"/assets/"  "=\"assets/";
-            sub_filter "='/assets/"   "='assets/";
-            sub_filter "=\"/static/"  "=\"static/";
-            sub_filter "='/static/"   "='static/";
-            sub_filter "=\"/favicon"  "=\"favicon";
-            sub_filter "='/favicon"   "='favicon";
+            #    Patterns match inside both HTML attributes (href="/assets/)
+            #    and JS strings ("/assets/), covering dynamic imports,
+            #    preload arrays, and string concatenation.
+            sub_filter '"/assets/' '"assets/';
+            sub_filter "'/assets/" "'assets/";
+            sub_filter '"/static/' '"static/';
+            sub_filter "'/static/" "'static/";
+            sub_filter '"/favicon' '"favicon';
+            sub_filter "'/favicon" "'favicon";
+            sub_filter '"/healthz' '"healthz';
+            sub_filter "'/healthz" "'healthz";
+
+            # 3) CSS url() references (unquoted)
+            sub_filter "url(/assets/" "url(assets/";
+            sub_filter "url(/static/" "url(static/";
 
             # Disable buffering for streaming/SSE
             proxy_buffering off;
