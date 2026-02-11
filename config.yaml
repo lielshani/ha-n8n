@@ -1,16 +1,71 @@
-name: "My Custom n8n"
+---
+name: "n8n"
 version: "1.0.0"
-slug: "my_n8n"
-description: "Self-hosted n8n workflow automation"
+slug: "ha_n8n"
+description: "Self-hosted n8n workflow automation for Home Assistant"
 url: "https://github.com/lielshani/ha-n8n"
+
+# ---------------------------------------------------------------------------
+# Architecture & Lifecycle
+# ---------------------------------------------------------------------------
 arch:
   - aarch64
   - amd64
-ports:
-  5678/tcp: 5678
+init: false
+startup: application
+boot: auto
+
+# ---------------------------------------------------------------------------
+# Ingress (authenticated UI access via HA panel)
+# ---------------------------------------------------------------------------
+ingress: true
+ingress_port: 5678
+ingress_stream: true
+panel_icon: "mdi:sitemap-outline"
+
+# ---------------------------------------------------------------------------
+# HA Integration
+# ---------------------------------------------------------------------------
+homeassistant_api: true
+hassio_api: true
+hassio_role: "default"
+
+# ---------------------------------------------------------------------------
+# Volume Mappings  (/data is always mapped & writable by default)
+# ---------------------------------------------------------------------------
 map:
-  - config:rw
+  - ssl:ro
+  - share:rw
+  - media:rw
+
+# ---------------------------------------------------------------------------
+# Network Ports
+# ---------------------------------------------------------------------------
+ports:
+  5678/tcp: null
+ports_description:
+  5678/tcp: >-
+    n8n web interface. Not exposed by default because Ingress is more
+    secure. Expose this port only if you need direct access or external
+    webhooks. See the documentation for details.
+
+# ---------------------------------------------------------------------------
+# Backup
+# ---------------------------------------------------------------------------
+backup_exclude:
+  - "*.log"
+  - ".n8n/crash.journal"
+  - ".n8n/.cache"
+
+# ---------------------------------------------------------------------------
+# User Options & Schema
+# ---------------------------------------------------------------------------
 options:
-  secure_cookie: false
+  timezone: "Europe/Berlin"
+  env_vars_list: []
+  cmd_line_args: ""
 schema:
-  secure_cookie: bool
+  timezone: str
+  env_vars_list:
+    - "match(^[A-Z_0-9]+: .*$)"
+  cmd_line_args: "str?"
