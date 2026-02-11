@@ -20,7 +20,9 @@ RUN apk add --no-cache bash jq curl nginx \
     && tar xzf /tmp/bashio.tar.gz --strip-components=1 -C /tmp/bashio \
     # --- collect binaries + shared libs into /export ---
     && mkdir -p /export/usr/bin /export/usr/lib /export/lib \
-        /export/usr/sbin /export/var/log/nginx /export/var/lib/nginx/tmp \
+        /export/usr/sbin \
+        /export/var/log/nginx /export/var/lib/nginx/tmp \
+        /export/var/lib/nginx/logs \
         /export/etc/nginx \
     # bash
     && BASH_BIN="$(which bash)" \
@@ -64,7 +66,7 @@ RUN apk add --no-cache bash jq curl nginx \
 # ---------- Stage 2: Final image ------------------------------------------
 FROM $BUILD_FROM
 
-ARG BUILD_VERSION=1.0.4
+ARG BUILD_VERSION=1.0.5
 ARG BUILD_ARCH
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
