@@ -1,21 +1,64 @@
-# Start from the official n8n image
-FROM n8nio/n8n:latest
+# ===========================================================================
+# Home Assistant Add-on: n8n
+#
+# The official n8n image is a Docker Hardened Image (Alpine-based, apk
+# stripped).  We use a multi-stage build to pull in bash, jq, and bashio
+# from a regular Alpine image, then copy the binaries + libraries into
+# the final n8n image.
+# ===========================================================================
 
-# Switch to root to install packages
+# Global ARG -- must precede all FROM directives for multi-stage builds
+ARG BUILD_FROM
+
+# ---------- Stage 1: HA integration dependencies --------------------------
+FROM alpine:3.22 AS ha-deps
+
+RUN apk add --no-cache bash jq curl \
+    && curl -sL -o /tmp/bashio.tar.gz \
+        "https://github.com/hassio-addons/bashio/archive/refs/tags/v0.16.2.tar.gz" \
+    && mkdir -p /tmp/bashio \
+    && tar xzf /tmp/bashio.tar.gz --strip-components=1 -C /tmp/bashio \
+    # --- collect binaries + shared libs into /export ---
+    && mkdir -p /export/usr/bin /export/usr/lib /export/lib \
+    # bash
+    && BASH_BIN="$(which bash)" \
+    && cp "$BASH_BIN" /export/usr/bin/bash \
+    && ldd "$BASH_BIN" | awk '/=>/{print $3}' | while read -r lib; do \
+           [ -f "$lib" ] && cp "$lib" /export/lib/; \
+       done \
+    # jq
+    && JQ_BIN="$(which jq)" \
+    && cp "$JQ_BIN" /export/usr/bin/jq \
+    && ldd "$JQ_BIN" | awk '/=>/{print $3}' | while read -r lib; do \
+           [ -f "$lib" ] && cp "$lib" /export/lib/; \
+       done \
+    # bashio library
+    && mkdir -p /export/usr/lib/bashio \
+    && cp -r /tmp/bashio/lib/* /export/usr/lib/bashio/ \
+    && ln -s /usr/lib/bashio/bashio /export/usr/bin/bashio \
+    # cleanup
+    && rm -rf /tmp/bashio.tar.gz /tmp/bashio
+
+# ---------- Stage 2: Final image ------------------------------------------
+FROM $BUILD_FROM
+
+ARG BUILD_VERSION=1.0.0
+ARG BUILD_ARCH
+LABEL \
+    io.hass.version="${BUILD_VERSION}" \
+    io.hass.type="addon" \
+    io.hass.arch="${BUILD_ARCH}"
+
 USER root
 
-# Install bash and jq (needed for the run script)
-RUN apk add --no-cache bash jq
+# Copy bash + jq + bashio from builder
+COPY --from=ha-deps /export/ /
 
-# Copy our run script
-COPY run.sh /run.sh
+# Persistent storage for HA
+RUN mkdir -p /data
+
+# Entrypoint
+COPY run.sh /
 RUN chmod a+x /run.sh
-
-# Switch back to the node user (optional, but n8n prefers non-root)
-# Note: HA Add-ons often run as root to access hardware/config, 
-# but for n8n we usually want to stay as 'node'. 
-# However, to read HA config options easily, running as root is simpler.
-# Let's stay root for the wrapper script, then drop down if needed.
-USER root
 
 CMD [ "/run.sh" ]
