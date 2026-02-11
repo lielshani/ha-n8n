@@ -1,0 +1,16 @@
+name: "My Custom n8n"
+version: "1.0.0"
+slug: "my_n8n"
+description: "Self-hosted n8n workflow automation"
+url: "https://github.com/lielshani/ha-n8n"
+arch:
+  - aarch64
+  - amd64
+ports:
+  5678/tcp: 5678
+map:
+  - config:rw
+options:
+  secure_cookie: false
+schema:
+  secure_cookie: bool
