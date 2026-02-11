@@ -11,7 +11,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0. Startup banner — versions & diagnostics (logged before anything else)
 # ---------------------------------------------------------------------------
-ADDON_VERSION="1.0.5"
+ADDON_VERSION="1.0.6"
 
 echo "==========================================================="
 echo " Home Assistant Add-on: n8n"
@@ -80,8 +80,9 @@ export TZ="${TIMEZONE}"
 # Persist data inside HA's /data volume (survives add-on rebuilds)
 export N8N_USER_FOLDER="/data"
 
-# n8n listens on 5679 (internal); nginx proxies ingress on 5678.
-export N8N_PORT="5679"
+# n8n listens on 5680 (internal); nginx proxies ingress on 5678.
+# Port 5679 is reserved for n8n's internal Task Broker.
+export N8N_PORT="5680"
 export N8N_LISTEN_ADDRESS="127.0.0.1"
 
 # Recommended n8n settings for self-hosted
@@ -137,8 +138,8 @@ if [[ -n "${INGRESS_ENTRY}" && -f "${NGINX_TEMPLATE}" ]]; then
     USE_NGINX=true
 else
     USE_NGINX=false
-    # No ingress — n8n listens on 5678 directly
-    export N8N_PORT="5678"
+    # No ingress — n8n listens on 5680 directly
+    export N8N_PORT="5680"
     export N8N_LISTEN_ADDRESS="0.0.0.0"
     unset N8N_PATH
     log_info "No ingress proxy — n8n listening directly on 5678"
