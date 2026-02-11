@@ -53,7 +53,7 @@ RUN apk add --no-cache bash jq curl \
 # ---------- Stage 2: Final image ------------------------------------------
 FROM $BUILD_FROM
 
-ARG BUILD_VERSION=1.0.1
+ARG BUILD_VERSION=1.0.2
 ARG BUILD_ARCH
 LABEL \
     io.hass.version="${BUILD_VERSION}" \

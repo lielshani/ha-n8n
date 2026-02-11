@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.2] - 2026-02-11
+
+### Fixed
+
+- **CHANGELOG 500 error**: Moved `CHANGELOG.md` into the add-on directory
+  (`n8n/`) where HA Supervisor expects it (symlink kept at repo root).
+- **Deprecated env var**: Removed `N8N_RUNNERS_ENABLED` — deprecated since
+  n8n 2.7+, runners are enabled by default.
+
 ## [1.0.1] - 2026-02-11
 
 ### Fixed
