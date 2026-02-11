@@ -76,4 +76,8 @@ RUN chmod a+x /run.sh
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --quiet --spider http://localhost:5678/ || exit 1
 
-CMD [ "/run.sh" ]
+# Override the n8n image's ENTRYPOINT (tini -- /docker-entrypoint.sh)
+# so our run.sh controls the full startup. We keep tini as PID 1 for
+# proper signal forwarding.
+ENTRYPOINT [ "tini", "--" ]
+CMD [ "/usr/bin/bash", "/run.sh" ]
