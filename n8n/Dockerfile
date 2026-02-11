@@ -13,13 +13,15 @@ ARG BUILD_FROM
 # ---------- Stage 1: HA integration dependencies --------------------------
 FROM alpine:3.22 AS ha-deps
 
-RUN apk add --no-cache bash jq curl \
+RUN apk add --no-cache bash jq curl nginx \
     && curl -sL -o /tmp/bashio.tar.gz \
         "https://github.com/hassio-addons/bashio/archive/refs/tags/v0.16.2.tar.gz" \
     && mkdir -p /tmp/bashio \
     && tar xzf /tmp/bashio.tar.gz --strip-components=1 -C /tmp/bashio \
     # --- collect binaries + shared libs into /export ---
     && mkdir -p /export/usr/bin /export/usr/lib /export/lib \
+        /export/usr/sbin /export/var/log/nginx /export/var/lib/nginx/tmp \
+        /export/etc/nginx \
     # bash
     && BASH_BIN="$(which bash)" \
     && cp "$BASH_BIN" /export/usr/bin/bash \
@@ -40,6 +42,15 @@ RUN apk add --no-cache bash jq curl \
            [ -f "$lib" ] && cp -n "$lib" /export/usr/lib/ 2>/dev/null; \
            true; \
        done \
+    # nginx (reverse proxy for HA ingress path rewriting)
+    && NGINX_BIN="$(which nginx)" \
+    && cp "$NGINX_BIN" /export/usr/sbin/nginx \
+    && ldd "$NGINX_BIN" | awk '/=>/{print $3}' | while read -r lib; do \
+           [ -f "$lib" ] && cp -n "$lib" /export/lib/ 2>/dev/null; \
+           [ -f "$lib" ] && cp -n "$lib" /export/usr/lib/ 2>/dev/null; \
+           true; \
+       done \
+    && cp /etc/nginx/mime.types /export/etc/nginx/ 2>/dev/null || true \
     # also grab ca-certificates for HTTPS
     && mkdir -p /export/etc/ssl \
     && cp -r /etc/ssl/certs /export/etc/ssl/ \
@@ -53,7 +64,7 @@ RUN apk add --no-cache bash jq curl \
 # ---------- Stage 2: Final image ------------------------------------------
 FROM $BUILD_FROM
 
-ARG BUILD_VERSION=1.0.3
+ARG BUILD_VERSION=1.0.4
 ARG BUILD_ARCH
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
@@ -76,12 +87,14 @@ RUN mkdir -p /data
 # We also keep run.sh at / as an alias.
 COPY run.sh /docker-entrypoint.sh
 COPY run.sh /run.sh
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
 RUN chmod a+x /docker-entrypoint.sh /run.sh
 
-# Health check — uses curl (which we inject); wget is NOT available in
-# the hardened n8n image. Increased start-period for aarch64 cold starts.
+# Health check — probes nginx on 5678, validating the full proxy chain.
+# Falls back to n8n directly on 5679 if nginx isn't running.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
-    CMD curl -sf -o /dev/null http://localhost:5678/ || exit 1
+    CMD curl -sf -o /dev/null http://localhost:5678/ || \
+        curl -sf -o /dev/null http://127.0.0.1:5679/ || exit 1
 
 # Clear CMD so that docker-entrypoint.sh receives no arguments.
 # The original script does `exec n8n "$@"` — with an empty CMD, $@ is empty

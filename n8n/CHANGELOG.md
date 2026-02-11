@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.4] - 2026-02-11
+
+### Added
+
+- **Ingress proxy (nginx)**: n8n's editor serves assets with absolute paths
+  based on `N8N_PATH`. HA's ingress proxy strips the path prefix before
+  forwarding. An nginx reverse proxy inside the container re-adds the prefix,
+  allowing n8n assets, API calls, and WebSockets to work through HA ingress.
+- `N8N_PATH` auto-detected from the Supervisor API (`ingress_entry`).
+- nginx added to the multi-stage Docker build.
+- Graceful multi-process shutdown (SIGTERM forwarded to both n8n and nginx).
+
+### Changed
+
+- n8n now listens on port 5679 (internal); nginx proxies port 5678 (ingress).
+- HEALTHCHECK probes nginx on 5678 with fallback to n8n on 5679.
+
 ## [1.0.3] - 2026-02-11
 
 ### Fixed

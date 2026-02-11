@@ -1,0 +1,47 @@
+worker_processes 1;
+pid /var/run/nginx.pid;
+error_log /dev/stderr warn;
+
+events {
+    worker_connections 128;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    access_log off;
+
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
+    server {
+        listen 5678 default_server;
+        server_name _;
+
+        # HA ingress strips the /api/hassio_ingress/<token> prefix before
+        # forwarding to us.  n8n is configured with N8N_PATH set to that
+        # prefix, so we re-add it before proxying to n8n on port 5679.
+        location / {
+            rewrite ^/(.*)$ {{INGRESS_ENTRY}}$1 break;
+
+            proxy_pass         http://127.0.0.1:5679;
+            proxy_http_version 1.1;
+            proxy_read_timeout 86400s;
+            proxy_send_timeout 86400s;
+
+            # WebSocket support (required by n8n editor)
+            proxy_set_header Upgrade    $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Disable buffering for streaming/SSE
+            proxy_buffering off;
+        }
+    }
+}

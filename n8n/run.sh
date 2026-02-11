@@ -11,7 +11,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0. Startup banner — versions & diagnostics (logged before anything else)
 # ---------------------------------------------------------------------------
-ADDON_VERSION="1.0.3"
+ADDON_VERSION="1.0.4"
 
 echo "==========================================================="
 echo " Home Assistant Add-on: n8n"
@@ -80,15 +80,12 @@ export TZ="${TIMEZONE}"
 # Persist data inside HA's /data volume (survives add-on rebuilds)
 export N8N_USER_FOLDER="/data"
 
-# Listen on the ingress port defined in config.yaml
-export N8N_PORT="5678"
-export N8N_LISTEN_ADDRESS="0.0.0.0"
+# n8n listens on 5679 (internal); nginx proxies ingress on 5678.
+export N8N_PORT="5679"
+export N8N_LISTEN_ADDRESS="127.0.0.1"
 
 # Recommended n8n settings for self-hosted
 export N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS="true"
-
-# N8N_RUNNERS_ENABLED removed — deprecated since n8n 2.7+, runners are
-# enabled by default and the env var is no longer needed.
 
 # Disable diagnostics/telemetry in HA context
 export N8N_DIAGNOSTICS_ENABLED="false"
@@ -97,16 +94,58 @@ export N8N_DIAGNOSTICS_ENABLED="false"
 export N8N_VERSION_NOTIFICATIONS_ENABLED="false"
 
 # ---------------------------------------------------------------------------
-# 4. SUPERVISOR_TOKEN (injected by HA Supervisor automatically)
+# 4. SUPERVISOR_TOKEN & Ingress
+#    Query the Supervisor API for the ingress entry path so we can tell n8n
+#    its real base path and configure nginx to re-add the prefix that the
+#    ingress proxy strips before forwarding to us.
 # ---------------------------------------------------------------------------
+INGRESS_ENTRY=""
 if [[ -n "${SUPERVISOR_TOKEN:-}" ]]; then
     log_info "SUPERVISOR_TOKEN is available for HA API access"
+
+    INGRESS_ENTRY="$(curl -sS \
+        -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+        http://supervisor/addons/self/info 2>/dev/null \
+        | jq -r '.data.ingress_entry // empty')" || true
+
+    if [[ -n "${INGRESS_ENTRY}" ]]; then
+        log_info "Ingress entry: ${INGRESS_ENTRY}"
+        # Ensure it ends with /
+        [[ "${INGRESS_ENTRY}" == */ ]] || INGRESS_ENTRY="${INGRESS_ENTRY}/"
+        export N8N_PATH="${INGRESS_ENTRY}"
+        log_info "N8N_PATH set to ${N8N_PATH}"
+    else
+        log_warning "Could not detect ingress entry — assets may 404 via ingress"
+    fi
 else
-    log_warning "SUPERVISOR_TOKEN not found — HA API calls will fail"
+    log_warning "SUPERVISOR_TOKEN not found — running without ingress proxy"
 fi
 
 # ---------------------------------------------------------------------------
-# 5. User-defined environment variables (env_vars_list from options.json)
+# 5. nginx ingress proxy
+#    Generate nginx config from template, replacing {{INGRESS_ENTRY}}.
+#    nginx on port 5678 re-adds the ingress prefix that HA strips, then
+#    proxies to n8n on 5679.
+# ---------------------------------------------------------------------------
+NGINX_CONF="/etc/nginx/nginx.conf"
+NGINX_TEMPLATE="/etc/nginx/nginx.conf.template"
+
+if [[ -n "${INGRESS_ENTRY}" && -f "${NGINX_TEMPLATE}" ]]; then
+    sed "s|{{INGRESS_ENTRY}}|${INGRESS_ENTRY}|g" \
+        "${NGINX_TEMPLATE}" > "${NGINX_CONF}"
+    log_info "nginx config generated for ingress proxy"
+    USE_NGINX=true
+else
+    USE_NGINX=false
+    # No ingress — n8n listens on 5678 directly
+    export N8N_PORT="5678"
+    export N8N_LISTEN_ADDRESS="0.0.0.0"
+    unset N8N_PATH
+    log_info "No ingress proxy — n8n listening directly on 5678"
+fi
+
+# ---------------------------------------------------------------------------
+# 6. User-defined environment variables (env_vars_list from options.json)
 #    Format per entry: "KEY: value"
 # ---------------------------------------------------------------------------
 ENV_COUNT="$(jq -r '.env_vars_list | length' "${OPTIONS_FILE}")"
@@ -132,7 +171,7 @@ if [[ "${ENV_COUNT}" -gt 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 6. Optional command-line arguments
+# 7. Optional command-line arguments
 # ---------------------------------------------------------------------------
 CMD_ARGS="$(jq -r '.cmd_line_args // empty' "${OPTIONS_FILE}")"
 
@@ -141,13 +180,39 @@ if [[ -n "${CMD_ARGS}" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 7. Launch n8n (exec replaces shell — signals propagate to n8n directly)
+# 8. Launch n8n (+ nginx when ingress is active)
 # ---------------------------------------------------------------------------
 log_info "Environment ready. Launching n8n..."
 
+# Graceful shutdown — forward SIGTERM to both processes
+cleanup() {
+    log_info "Received shutdown signal..."
+    [[ -n "${N8N_PID:-}" ]]   && kill "${N8N_PID}" 2>/dev/null
+    [[ -n "${NGINX_PID:-}" ]] && kill "${NGINX_PID}" 2>/dev/null
+    wait
+    log_info "Shutdown complete."
+}
+trap cleanup SIGTERM SIGINT
+
 if [[ -n "${CMD_ARGS}" ]]; then
     # shellcheck disable=SC2086
-    exec n8n ${CMD_ARGS}
+    n8n ${CMD_ARGS} &
 else
-    exec n8n
+    n8n &
 fi
+N8N_PID=$!
+
+if [[ "${USE_NGINX}" == "true" ]]; then
+    log_info "Starting nginx ingress proxy on port 5678..."
+    /usr/sbin/nginx -c "${NGINX_CONF}" -g "daemon off;" &
+    NGINX_PID=$!
+    log_info "nginx PID: ${NGINX_PID}, n8n PID: ${N8N_PID}"
+fi
+
+# Wait for either process to exit
+wait -n "${N8N_PID}" ${NGINX_PID:+"${NGINX_PID}"} 2>/dev/null || true
+EXIT_CODE=$?
+
+log_info "Process exited with code ${EXIT_CODE}, shutting down..."
+cleanup
+exit "${EXIT_CODE}"

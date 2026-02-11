@@ -246,7 +246,7 @@ assert_output "Banner shows n8n version"      "n8n version"   echo "${BANNER_OUT
 assert_output "Banner shows Node.js version"  "Node.js"       echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Architecture"     "Architecture"  echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Startup time"     "Startup time"  echo "${BANNER_OUTPUT}"
-assert_output "Banner shows version 1.0.3"    "1.0.3"         echo "${BANNER_OUTPUT}"
+assert_output "Banner shows version 1.0.4"    "1.0.4"         echo "${BANNER_OUTPUT}"
 
 echo ""
 
@@ -263,6 +263,16 @@ assert "config.yaml watchdog present"      grep -q "watchdog:" config.yaml
 # (This would have caught the wget-not-found bug that caused the restart loop)
 assert "HEALTHCHECK binary (curl) exists in image" \
     docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "command -v curl"
+
+# Nginx ingress proxy
+assert "nginx binary exists in image" \
+    docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "command -v nginx"
+
+assert "nginx.conf.template present" \
+    docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "test -f /etc/nginx/nginx.conf.template"
+
+assert "nginx.conf.template has INGRESS_ENTRY placeholder" \
+    docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "grep -q 'INGRESS_ENTRY' /etc/nginx/nginx.conf.template"
 
 echo ""
 
