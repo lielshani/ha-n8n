@@ -3,6 +3,37 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.7] - 2026-02-11
+
+### Fixed
+
+- **MIME type errors on ingress**: Setting `N8N_PATH` broke n8n's internal
+  static file serving — it returned `index.html` instead of JS assets, causing
+  `"Strict MIME type checking"` errors. Replaced `N8N_PATH` + nginx rewrite
+  with nginx `sub_filter`:
+  - n8n serves at `/` as normal (no subpath).
+  - nginx rewrites `window.BASE_PATH` in responses to the ingress entry.
+  - Absolute asset paths (`/assets/...`) converted to relative (`assets/...`)
+    so the browser resolves them through the ingress proxy.
+  - Upstream compression disabled so `sub_filter` can process response bodies.
+
+## [1.0.6] - 2026-02-11
+
+### Fixed
+
+- **Port conflict**: n8n's internal Task Broker defaults to port 5679. Moving
+  n8n's main server to 5679 caused a conflict. Switched n8n's main server to
+  port 5680, freeing 5679 for the Task Broker.
+
+## [1.0.5] - 2026-02-11
+
+### Fixed
+
+- **nginx missing user directive**: Added `user root;` to nginx config as the
+  hardened image does not contain an `nginx` user.
+- **nginx log directories**: Created `/var/lib/nginx/logs` directory in the
+  builder stage to prevent nginx startup errors.
+
 ## [1.0.4] - 2026-02-11
 
 ### Added
