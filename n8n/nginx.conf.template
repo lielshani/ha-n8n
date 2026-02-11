@@ -22,11 +22,10 @@ http {
         server_name _;
 
         # HA ingress strips the /api/hassio_ingress/<token> prefix before
-        # forwarding to us.  n8n is configured with N8N_PATH set to that
-        # prefix, so we re-add it before proxying to n8n on port 5679.
+        # forwarding to us.  n8n serves everything at / as normal.
+        # We use sub_filter to rewrite response bodies so the browser
+        # resolves asset paths and API calls through the ingress proxy.
         location / {
-            rewrite ^/(.*)$ {{INGRESS_ENTRY}}$1 break;
-
             proxy_pass         http://127.0.0.1:5680;
             proxy_http_version 1.1;
             proxy_read_timeout 86400s;
@@ -40,6 +39,27 @@ http {
             proxy_set_header X-Real-IP         $remote_addr;
             proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Disable upstream compression so sub_filter can process bodies
+            proxy_set_header Accept-Encoding "";
+
+            # ---- Response body rewriting ----
+            sub_filter_types text/html text/css text/javascript
+                             application/javascript application/json;
+            sub_filter_once off;
+
+            # 1) Set window.BASE_PATH so JS API calls use the ingress path
+            sub_filter "window.BASE_PATH = '/'" "window.BASE_PATH = '{{INGRESS_ENTRY}}'";
+
+            # 2) Convert absolute asset/static paths to relative ones.
+            #    The browser resolves relatives against the ingress URL,
+            #    sending them back through the proxy automatically.
+            sub_filter "=\"/assets/"  "=\"assets/";
+            sub_filter "='/assets/"   "='assets/";
+            sub_filter "=\"/static/"  "=\"static/";
+            sub_filter "='/static/"   "='static/";
+            sub_filter "=\"/favicon"  "=\"favicon";
+            sub_filter "='/favicon"   "='favicon";
 
             # Disable buffering for streaming/SSE
             proxy_buffering off;

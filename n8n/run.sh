@@ -11,7 +11,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0. Startup banner — versions & diagnostics (logged before anything else)
 # ---------------------------------------------------------------------------
-ADDON_VERSION="1.0.6"
+ADDON_VERSION="1.0.7"
 
 echo "==========================================================="
 echo " Home Assistant Add-on: n8n"
@@ -113,8 +113,10 @@ if [[ -n "${SUPERVISOR_TOKEN:-}" ]]; then
         log_info "Ingress entry: ${INGRESS_ENTRY}"
         # Ensure it ends with /
         [[ "${INGRESS_ENTRY}" == */ ]] || INGRESS_ENTRY="${INGRESS_ENTRY}/"
-        export N8N_PATH="${INGRESS_ENTRY}"
-        log_info "N8N_PATH set to ${N8N_PATH}"
+        # N8N_PATH is NOT set — n8n serves at / as normal.
+        # nginx sub_filter rewrites response bodies so the browser
+        # resolves paths through the ingress proxy.
+        log_info "Ingress path: ${INGRESS_ENTRY}"
     else
         log_warning "Could not detect ingress entry — assets may 404 via ingress"
     fi
