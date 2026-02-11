@@ -1,6 +1,6 @@
 ---
 name: "n8n"
-version: "1.0.7"
+version: "1.0.8"
 slug: "ha_n8n"
 description: "Self-hosted n8n workflow automation for Home Assistant"
 url: "https://github.com/lielshani/ha-n8n"
@@ -42,17 +42,18 @@ map:
 # Network Ports
 # ---------------------------------------------------------------------------
 ports:
-  5678/tcp: null
+  5680/tcp: 5678
 ports_description:
-  5678/tcp: >-
-    n8n web interface. Not exposed by default because Ingress is more
-    secure. Expose this port only if you need direct access or external
-    webhooks. See the documentation for details.
+  5680/tcp: >-
+    n8n direct access (LAN). Access n8n at http://<your-ha-ip>:5678/.
+    This bypasses HA ingress and works from any device on your local
+    network. Also required for external webhooks. Change or disable
+    in the add-on Network configuration.
 
 # ---------------------------------------------------------------------------
 # Health Monitoring (Supervisor watchdog)
 # ---------------------------------------------------------------------------
-watchdog: "http://[HOST]:[PORT:5678]/"
+watchdog: "http://[HOST]:5680/"
 
 # ---------------------------------------------------------------------------
 # Backup

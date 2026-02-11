@@ -246,7 +246,7 @@ assert_output "Banner shows n8n version"      "n8n version"   echo "${BANNER_OUT
 assert_output "Banner shows Node.js version"  "Node.js"       echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Architecture"     "Architecture"  echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Startup time"     "Startup time"  echo "${BANNER_OUTPUT}"
-assert_output "Banner shows version 1.0.7"    "1.0.7"         echo "${BANNER_OUTPUT}"
+assert_output "Banner shows version 1.0.8"    "1.0.8"         echo "${BANNER_OUTPUT}"
 
 echo ""
 
@@ -256,7 +256,7 @@ echo ""
 bold "=== Test Suite 4: Health Check ==="
 
 assert "Dockerfile HEALTHCHECK present"    grep -q "HEALTHCHECK" Dockerfile
-assert "HEALTHCHECK uses curl"             grep -q "curl.*localhost:5678" Dockerfile
+assert "HEALTHCHECK uses curl"             grep -q "curl.*localhost:5680" Dockerfile
 assert "config.yaml watchdog present"      grep -q "watchdog:" config.yaml
 
 # Actually verify the health check binary exists inside the container

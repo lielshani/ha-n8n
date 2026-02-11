@@ -25,7 +25,10 @@ installing any other Home Assistant add-on.
 
 2. Find **n8n** in the add-on store and click **Install**.
 3. Click **Start**.
-4. Click **OPEN WEB UI** to access n8n through Home Assistant.
+4. Access n8n:
+   - **Via Home Assistant:** Click **OPEN WEB UI** in the add-on panel.
+   - **Via LAN:** Open `http://<your-ha-ip>:5678/` in any browser on
+     your network.
 5. Create your admin account on the n8n setup screen — you're done!
 
 > **No configuration is required.** The add-on works out of the box with
@@ -101,9 +104,9 @@ accessible without authentication.
 
 To use webhook-based triggers and the n8n API:
 
-1. Expose port `5678` through a tunnel to the internet. The recommended
-   approach is the [Cloudflared add-on][cloudflared] or a similar reverse
-   proxy / tunnel solution.
+1. Make sure direct access is enabled (port 5678 — see above), then expose
+   it through a tunnel to the internet. The recommended approach is the
+   [Cloudflared add-on][cloudflared] or a similar reverse proxy / tunnel.
 2. Set the `WEBHOOK_URL` environment variable to the public URL of the
    tunnel:
 
@@ -125,11 +128,24 @@ env_vars_list:
   - "EXTERNAL_URL: https://xxxxxxxx.ui.nabu.casa"
 ```
 
-### Direct access (not recommended)
+### Direct access (LAN)
 
-You can expose port `5678` directly by enabling it under the **Network**
-section of the add-on configuration tab. This bypasses Home Assistant
-authentication and is not recommended.
+By default, n8n is also accessible directly from your local network at:
+
+```
+http://<your-home-assistant-ip>:5678/
+```
+
+This bypasses Home Assistant Ingress and lets you use n8n from any browser
+on your LAN — no HA login needed. n8n has its own authentication (the
+admin account you created during setup), so access is still protected.
+
+This port mapping is configured under **Settings** > **Add-ons** > **n8n**
+> **Configuration** > **Network**. You can change the host port or set it
+to **disabled** if you only want access through Ingress.
+
+**Direct access is also required for webhooks** — external services need
+to reach n8n without going through HA Ingress.
 
 ## Installing external npm packages
 
