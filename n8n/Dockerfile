@@ -53,7 +53,7 @@ RUN apk add --no-cache bash jq curl \
 # ---------- Stage 2: Final image ------------------------------------------
 FROM $BUILD_FROM
 
-ARG BUILD_VERSION=1.0.2
+ARG BUILD_VERSION=1.0.3
 ARG BUILD_ARCH
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
@@ -78,9 +78,10 @@ COPY run.sh /docker-entrypoint.sh
 COPY run.sh /run.sh
 RUN chmod a+x /docker-entrypoint.sh /run.sh
 
-# Health check — polls n8n's HTTP endpoint every 30s
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget --quiet --spider http://localhost:5678/ || exit 1
+# Health check — uses curl (which we inject); wget is NOT available in
+# the hardened n8n image. Increased start-period for aarch64 cold starts.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -sf -o /dev/null http://localhost:5678/ || exit 1
 
 # Clear CMD so that docker-entrypoint.sh receives no arguments.
 # The original script does `exec n8n "$@"` — with an empty CMD, $@ is empty

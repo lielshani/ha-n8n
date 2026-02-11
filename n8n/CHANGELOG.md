@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.3] - 2026-02-11
+
+### Fixed
+
+- **Health check crash loop**: HEALTHCHECK used `wget` which does not exist in
+  the hardened n8n image. Switched to `curl` (which we inject). This caused the
+  Supervisor to never mark the add-on as "started", triggering watchdog restarts
+  every 120 seconds.
+- Increased HEALTHCHECK `start-period` from 60s to 90s for aarch64 cold starts.
+
 ## [1.0.2] - 2026-02-11
 
 ### Fixed

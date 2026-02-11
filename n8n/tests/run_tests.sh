@@ -246,7 +246,7 @@ assert_output "Banner shows n8n version"      "n8n version"   echo "${BANNER_OUT
 assert_output "Banner shows Node.js version"  "Node.js"       echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Architecture"     "Architecture"  echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Startup time"     "Startup time"  echo "${BANNER_OUTPUT}"
-assert_output "Banner shows version 1.0.2"    "1.0.2"         echo "${BANNER_OUTPUT}"
+assert_output "Banner shows version 1.0.3"    "1.0.3"         echo "${BANNER_OUTPUT}"
 
 echo ""
 
@@ -256,8 +256,13 @@ echo ""
 bold "=== Test Suite 4: Health Check ==="
 
 assert "Dockerfile HEALTHCHECK present"    grep -q "HEALTHCHECK" Dockerfile
-assert "HEALTHCHECK uses wget"             grep -q "wget.*spider.*localhost:5678" Dockerfile
+assert "HEALTHCHECK uses curl"             grep -q "curl.*localhost:5678" Dockerfile
 assert "config.yaml watchdog present"      grep -q "watchdog:" config.yaml
+
+# Actually verify the health check binary exists inside the container
+# (This would have caught the wget-not-found bug that caused the restart loop)
+assert "HEALTHCHECK binary (curl) exists in image" \
+    docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "command -v curl"
 
 echo ""
 
