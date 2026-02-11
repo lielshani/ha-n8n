@@ -2,12 +2,20 @@
 # ===========================================================================
 # ha-n8n — Test Suite
 #
-# Validates config, Dockerfile build, image filesystem, and run.sh logic.
-# Usage:  ./tests/run_tests.sh
+# Validates repo structure, config, Docker image, and run.sh logic.
+# Usage:  ./n8n/tests/run_tests.sh   (from repo root)
+#     or: ./tests/run_tests.sh       (from n8n/ directory)
 # Requires: docker, grep, jq
 # ===========================================================================
 
 set -euo pipefail
+
+# Resolve the add-on directory (n8n/) regardless of where the script is invoked
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ADDON_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_DIR="$(cd "${ADDON_DIR}/.." && pwd)"
+
+cd "${ADDON_DIR}"
 
 IMAGE="ha-n8n-test:local"
 PASS=0
@@ -58,6 +66,20 @@ config_exists() {
     local key="$1"
     grep -qE "^${key}:" config.yaml
 }
+
+# ---------------------------------------------------------------------------
+# Test 0: Repository structure (required by HA Supervisor)
+# ---------------------------------------------------------------------------
+bold "=== Test Suite 0: Repository Structure ==="
+
+assert "repository.yaml at repo root"      test -f "${REPO_DIR}/repository.yaml"
+assert "add-on in subdirectory (n8n/)"      test -d "${REPO_DIR}/n8n"
+assert "config.yaml inside add-on dir"      test -f "${REPO_DIR}/n8n/config.yaml"
+assert "Dockerfile inside add-on dir"       test -f "${REPO_DIR}/n8n/Dockerfile"
+assert "run.sh inside add-on dir"           test -f "${REPO_DIR}/n8n/run.sh"
+assert "config.yaml NOT at repo root"       test ! -f "${REPO_DIR}/config.yaml"
+
+echo ""
 
 # ---------------------------------------------------------------------------
 # Test 1: config.yaml validation
