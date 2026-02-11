@@ -11,7 +11,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0. Startup banner — versions & diagnostics (logged before anything else)
 # ---------------------------------------------------------------------------
-ADDON_VERSION="1.0.8"
+ADDON_VERSION="1.0.9"
 
 echo "==========================================================="
 echo " Home Assistant Add-on: n8n"
@@ -95,6 +95,11 @@ export N8N_DIAGNOSTICS_ENABLED="false"
 
 # Disable version notifications (HA manages updates)
 export N8N_VERSION_NOTIFICATIONS_ENABLED="false"
+
+# Allow cookies over plain HTTP (required for LAN access without TLS).
+# Ingress is already secured by HA auth; direct LAN access uses n8n's
+# own login. Users who add TLS can override via env_vars_list.
+export N8N_SECURE_COOKIE="false"
 
 # ---------------------------------------------------------------------------
 # 4. SUPERVISOR_TOKEN & Ingress
