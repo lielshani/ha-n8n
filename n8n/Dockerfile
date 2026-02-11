@@ -53,7 +53,7 @@ RUN apk add --no-cache bash jq curl \
 # ---------- Stage 2: Final image ------------------------------------------
 FROM $BUILD_FROM
 
-ARG BUILD_VERSION=1.0.0
+ARG BUILD_VERSION=1.0.1
 ARG BUILD_ARCH
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
@@ -69,15 +69,20 @@ COPY --from=ha-deps /export/ /
 RUN mkdir -p /data
 
 # Entrypoint
-COPY run.sh /
-RUN chmod a+x /run.sh
+# Strategy: overwrite the n8n image's /docker-entrypoint.sh with our run.sh.
+# The n8n base image ENTRYPOINT is ["tini", "--", "/docker-entrypoint.sh"],
+# which passes CMD as arguments to that script. By replacing the script
+# itself we guarantee our code runs regardless of ENTRYPOINT caching.
+# We also keep run.sh at / as an alias.
+COPY run.sh /docker-entrypoint.sh
+COPY run.sh /run.sh
+RUN chmod a+x /docker-entrypoint.sh /run.sh
 
 # Health check — polls n8n's HTTP endpoint every 30s
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --quiet --spider http://localhost:5678/ || exit 1
 
-# Override the n8n image's ENTRYPOINT (tini -- /docker-entrypoint.sh)
-# so our run.sh controls the full startup. We keep tini as PID 1 for
-# proper signal forwarding.
-ENTRYPOINT [ "tini", "--" ]
-CMD [ "/usr/bin/bash", "/run.sh" ]
+# Clear CMD so that docker-entrypoint.sh receives no arguments.
+# The original script does `exec n8n "$@"` — with an empty CMD, $@ is empty
+# and our run.sh (now at /docker-entrypoint.sh) controls everything.
+CMD []

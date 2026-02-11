@@ -143,6 +143,13 @@ assert "/data directory exists" \
 assert "run.sh is executable" \
     docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "test -x /run.sh"
 
+assert "docker-entrypoint.sh is our run.sh" \
+    docker run --rm --entrypoint /bin/sh "${IMAGE}" -c \
+    "grep -q 'Home Assistant Add-on: n8n' /docker-entrypoint.sh"
+
+assert "docker-entrypoint.sh is executable" \
+    docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "test -x /docker-entrypoint.sh"
+
 assert_output "n8n binary works" "2." \
     docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "n8n --version"
 
@@ -217,6 +224,29 @@ check_env "N8N_PORT"           "5678"
 check_env "WEBHOOK_URL"        "https://test.example.com"
 check_env "N8N_ENCRYPTION_KEY" "super-secret"
 check_env "SUPERVISOR_TOKEN"   "test-token"
+
+echo ""
+
+# ---------------------------------------------------------------------------
+# Test 3b: Startup banner diagnostics
+# ---------------------------------------------------------------------------
+bold "=== Test Suite 3b: Startup Banner ==="
+
+BANNER_OUTPUT="$(docker run --rm --entrypoint /usr/bin/bash \
+    "${IMAGE}" -c '
+cat > /data/options.json <<OPTS
+{"env_vars_list": []}
+OPTS
+# Just run the banner portion (first ~26 lines)
+source <(head -n 26 /docker-entrypoint.sh)
+' 2>/dev/null)"
+
+assert_output "Banner shows add-on version"  "Add-on version" echo "${BANNER_OUTPUT}"
+assert_output "Banner shows n8n version"      "n8n version"   echo "${BANNER_OUTPUT}"
+assert_output "Banner shows Node.js version"  "Node.js"       echo "${BANNER_OUTPUT}"
+assert_output "Banner shows Architecture"     "Architecture"  echo "${BANNER_OUTPUT}"
+assert_output "Banner shows Startup time"     "Startup time"  echo "${BANNER_OUTPUT}"
+assert_output "Banner shows version 1.0.1"    "1.0.1"         echo "${BANNER_OUTPUT}"
 
 echo ""
 

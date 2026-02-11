@@ -9,6 +9,23 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
+# 0. Startup banner — versions & diagnostics (logged before anything else)
+# ---------------------------------------------------------------------------
+ADDON_VERSION="1.0.1"
+
+echo "==========================================================="
+echo " Home Assistant Add-on: n8n"
+echo "==========================================================="
+echo " Add-on version : ${ADDON_VERSION}"
+echo " n8n version    : $(n8n --version 2>/dev/null || echo 'unknown')"
+echo " Node.js version: $(node --version 2>/dev/null || echo 'unknown')"
+echo " Architecture   : $(uname -m 2>/dev/null || echo 'unknown')"
+echo " Startup time   : $(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)"
+echo " Bash           : ${BASH_VERSION:-unknown}"
+echo " PID            : $$"
+echo "==========================================================="
+
+# ---------------------------------------------------------------------------
 # 1. Source bashio (used for logging only; config read via jq for testability)
 # ---------------------------------------------------------------------------
 # shellcheck source=/dev/null
@@ -20,6 +37,16 @@ fi
 log_info()    { bashio::log.info    "$@" 2>/dev/null || echo "[INFO]  $*"; }
 log_warning() { bashio::log.warning "$@" 2>/dev/null || echo "[WARN]  $*"; }
 log_error()   { bashio::log.error   "$@" 2>/dev/null || echo "[ERROR] $*"; }
+
+# ---------------------------------------------------------------------------
+# 1b. Custom certificates (preserved from original n8n entrypoint)
+# ---------------------------------------------------------------------------
+if [[ -d /opt/custom-certificates ]]; then
+    log_info "Trusting custom certificates from /opt/custom-certificates"
+    export NODE_OPTIONS="--use-openssl-ca ${NODE_OPTIONS:-}"
+    export SSL_CERT_DIR=/opt/custom-certificates
+    c_rehash /opt/custom-certificates 2>/dev/null || true
+fi
 
 OPTIONS_FILE="/data/options.json"
 
