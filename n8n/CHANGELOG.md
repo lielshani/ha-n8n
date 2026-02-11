@@ -3,6 +3,23 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.8] - 2026-02-11
+
+### Added
+
+- **Direct LAN access**: n8n is now accessible from any device on the local
+  network at `http://<ha-ip>:5678/`. Container port 5680 is mapped to host
+  port 5678 by default. No HA Ingress or authentication proxy needed —
+  n8n uses its own built-in auth.
+
+### Changed
+
+- `N8N_LISTEN_ADDRESS` changed from `127.0.0.1` to `0.0.0.0` so n8n accepts
+  connections from outside the container.
+- Watchdog and HEALTHCHECK now probe n8n directly on port 5680 (always
+  available, even if nginx isn't running).
+- Updated DOCS.md with direct access and webhook instructions.
+
 ## [1.0.7] - 2026-02-11
 
 ### Fixed
