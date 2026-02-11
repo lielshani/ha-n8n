@@ -32,6 +32,17 @@ RUN apk add --no-cache bash jq curl \
     && ldd "$JQ_BIN" | awk '/=>/{print $3}' | while read -r lib; do \
            [ -f "$lib" ] && cp "$lib" /export/lib/; \
        done \
+    # curl (required by bashio for Supervisor API calls)
+    && CURL_BIN="$(which curl)" \
+    && cp "$CURL_BIN" /export/usr/bin/curl \
+    && ldd "$CURL_BIN" | awk '/=>/{print $3}' | while read -r lib; do \
+           [ -f "$lib" ] && cp -n "$lib" /export/lib/ 2>/dev/null; \
+           [ -f "$lib" ] && cp -n "$lib" /export/usr/lib/ 2>/dev/null; \
+           true; \
+       done \
+    # also grab ca-certificates for HTTPS
+    && mkdir -p /export/etc/ssl \
+    && cp -r /etc/ssl/certs /export/etc/ssl/ \
     # bashio library
     && mkdir -p /export/usr/lib/bashio \
     && cp -r /tmp/bashio/lib/* /export/usr/lib/bashio/ \
@@ -60,5 +71,9 @@ RUN mkdir -p /data
 # Entrypoint
 COPY run.sh /
 RUN chmod a+x /run.sh
+
+# Health check — polls n8n's HTTP endpoint every 30s
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --quiet --spider http://localhost:5678/ || exit 1
 
 CMD [ "/run.sh" ]
