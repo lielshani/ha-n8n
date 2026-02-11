@@ -14,7 +14,7 @@
 
 ## In Progress
 
-- **First successful HA startup** — version 1.0.1 pushed; awaiting confirmation after HA repo refresh
+- **Ingress verification** — n8n starts and listens; verifying HA ingress proxy access
 
 ## Not Started
 

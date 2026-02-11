@@ -86,7 +86,9 @@ export N8N_LISTEN_ADDRESS="0.0.0.0"
 
 # Recommended n8n settings for self-hosted
 export N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS="true"
-export N8N_RUNNERS_ENABLED="true"
+
+# N8N_RUNNERS_ENABLED removed — deprecated since n8n 2.7+, runners are
+# enabled by default and the env var is no longer needed.
 
 # Disable diagnostics/telemetry in HA context
 export N8N_DIAGNOSTICS_ENABLED="false"
