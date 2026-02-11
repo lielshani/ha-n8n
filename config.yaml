@@ -66,11 +66,9 @@ backup_exclude:
 # User Options & Schema
 # ---------------------------------------------------------------------------
 options:
-  timezone: "Europe/Berlin"
   env_vars_list: []
-  cmd_line_args: ""
 schema:
-  timezone: str
+  timezone: "str?"
   env_vars_list:
     - "match(^[A-Z_0-9]+: .*$)"
   cmd_line_args: "str?"

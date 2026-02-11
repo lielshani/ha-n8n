@@ -87,7 +87,7 @@ assert "boot is auto"              config_has "boot" "auto"
 assert "panel_icon set"            config_exists "panel_icon"
 
 # Schema
-assert "schema has timezone"       grep -q "timezone: str" config.yaml
+assert "schema has timezone"       grep -q 'timezone:.*str' config.yaml
 assert "schema has env_vars_list"  grep -q "env_vars_list" config.yaml
 assert "schema has cmd_line_args"  grep -q "cmd_line_args" config.yaml
 
@@ -131,22 +131,27 @@ echo ""
 # ---------------------------------------------------------------------------
 bold "=== Test Suite 3: run.sh Export Logic ==="
 
-EXPORT_OUTPUT="$(docker run --rm --entrypoint /usr/bin/bash "${IMAGE}" -c '
+EXPORT_OUTPUT="$(docker run --rm --entrypoint /usr/bin/bash \
+    -e TZ="Asia/Tokyo" \
+    "${IMAGE}" -c '
 cat > /data/options.json <<OPTS
 {
-  "timezone": "Asia/Tokyo",
   "env_vars_list": [
     "WEBHOOK_URL: https://test.example.com",
     "N8N_ENCRYPTION_KEY: super-secret"
-  ],
-  "cmd_line_args": ""
+  ]
 }
 OPTS
 
 export SUPERVISOR_TOKEN="test-token"
 OPTIONS_FILE="/data/options.json"
 
-TIMEZONE="$(jq -r ".timezone // \"UTC\"" "${OPTIONS_FILE}")"
+USER_TZ="$(jq -r ".timezone // empty" "${OPTIONS_FILE}")"
+if [[ -n "${USER_TZ}" ]]; then
+    TIMEZONE="${USER_TZ}"
+else
+    TIMEZONE="${TZ:-UTC}"
+fi
 export GENERIC_TIMEZONE="${TIMEZONE}"
 export TZ="${TIMEZONE}"
 

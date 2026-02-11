@@ -31,12 +31,21 @@ fi
 log_info "Starting n8n add-on..."
 
 # ---------------------------------------------------------------------------
-# 2. Timezone (from HA options -> GENERIC_TIMEZONE + TZ)
+# 2. Timezone
+#    Priority: user option > HA Supervisor TZ env var > UTC
+#    The Supervisor injects TZ based on HA's configured timezone, so most
+#    users never need to set this manually.
 # ---------------------------------------------------------------------------
-TIMEZONE="$(jq -r '.timezone // "UTC"' "${OPTIONS_FILE}")"
+USER_TZ="$(jq -r '.timezone // empty' "${OPTIONS_FILE}")"
+if [[ -n "${USER_TZ}" ]]; then
+    TIMEZONE="${USER_TZ}"
+    log_info "Timezone from add-on config: ${TIMEZONE}"
+else
+    TIMEZONE="${TZ:-UTC}"
+    log_info "Timezone auto-detected from HA: ${TIMEZONE}"
+fi
 export GENERIC_TIMEZONE="${TIMEZONE}"
 export TZ="${TIMEZONE}"
-log_info "Timezone set to: ${TIMEZONE}"
 
 # ---------------------------------------------------------------------------
 # 3. n8n defaults for HA environment
