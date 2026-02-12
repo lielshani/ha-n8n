@@ -24,7 +24,7 @@ http {
         # HA ingress strips the /api/hassio_ingress/<token> prefix before
         # forwarding to us.  n8n serves everything at / as normal.
         # We use sub_filter to rewrite response bodies so the browser
-        # resolves asset paths and API calls through the ingress proxy.
+        # resolves paths through the ingress proxy.
         location / {
             proxy_pass         http://127.0.0.1:5680;
             proxy_http_version 1.1;
@@ -43,19 +43,27 @@ http {
             # Disable upstream compression so sub_filter can process bodies
             proxy_set_header Accept-Encoding "";
 
-            # ---- Response body rewriting ----
-            sub_filter_types text/html text/css text/javascript
+            # ---- Response body rewriting for HA Ingress ----
+            # text/html is processed by default; add JS/CSS/JSON.
+            sub_filter_types text/css text/javascript
                              application/javascript application/json;
             sub_filter_once off;
 
-            # 1) Set window.BASE_PATH so JS API/WebSocket calls route
+            # 1) Rolldown/Vite assetsURL helper — the critical fix.
+            #    n8n replaces {{BASE_PATH}} with "/" at build time, producing:
+            #      var assetsURL = function(dep) { return "/" + dep; };
+            #    This creates absolute paths like /assets/foo.js that bypass
+            #    ingress. Changing to "./" makes them relative, so the browser
+            #    resolves against the ingress URL (works for both ingress and
+            #    direct LAN access).
+            sub_filter 'return "/" + dep' 'return "./" + dep';
+
+            # 2) Set window.BASE_PATH so JS API/WebSocket calls route
             #    through the ingress proxy.
             sub_filter "window.BASE_PATH = '/'" "window.BASE_PATH = '{{INGRESS_ENTRY}}'";
 
-            # 2) Convert absolute asset/static paths to relative ones.
-            #    Patterns match inside both HTML attributes (href="/assets/)
-            #    and JS strings ("/assets/), covering dynamic imports,
-            #    preload arrays, and string concatenation.
+            # 3) Convert absolute asset/static paths to relative in HTML
+            #    attributes and JS string literals.
             sub_filter '"/assets/' '"assets/';
             sub_filter "'/assets/" "'assets/";
             sub_filter '"/static/' '"static/';
@@ -65,7 +73,7 @@ http {
             sub_filter '"/healthz' '"healthz';
             sub_filter "'/healthz" "'healthz";
 
-            # 3) CSS url() references (unquoted)
+            # 4) CSS url() references (unquoted)
             sub_filter "url(/assets/" "url(assets/";
             sub_filter "url(/static/" "url(static/";
 
