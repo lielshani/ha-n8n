@@ -3,6 +3,20 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.12] - 2026-02-12
+
+### Fixed
+
+- **Blank page after sign-in via ingress**: After logging in, n8n's SPA router
+  navigates to `/home/workflows`, changing the browser URL. Lazy-loaded JS/CSS
+  chunks were using relative paths (e.g. `./assets/foo.js`) which the browser
+  resolved against the current page URL — producing wrong paths like
+  `.../TOKEN/home/assets/foo.js` instead of `.../TOKEN/assets/foo.js`. n8n
+  returned `index.html` for these unknown paths, causing MIME type errors.
+  Fixed by rewriting asset paths to absolute ingress-prefixed paths
+  (`/api/hassio_ingress/TOKEN/assets/...`) instead of relative paths. Absolute
+  paths resolve correctly regardless of the current page sub-path.
+
 ## [1.0.8] - 2026-02-11
 
 ### Added

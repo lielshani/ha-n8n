@@ -53,29 +53,33 @@ http {
             #    n8n replaces {{BASE_PATH}} with "/" at build time, producing:
             #      var assetsURL = function(dep) { return "/" + dep; };
             #    This creates absolute paths like /assets/foo.js that bypass
-            #    ingress. Changing to "./" makes them relative, so the browser
-            #    resolves against the ingress URL (works for both ingress and
-            #    direct LAN access).
-            sub_filter 'return "/" + dep' 'return "./" + dep';
+            #    ingress. We rewrite to use the full ingress path so that
+            #    lazy-loaded chunks resolve correctly even after SPA navigation
+            #    changes the browser URL (e.g. /home/workflows).
+            #    Using relative paths ("./" + dep) breaks when the page URL has
+            #    sub-paths, because the browser resolves relative to the current
+            #    URL directory — not the ingress root.
+            sub_filter 'return "/" + dep' 'return "{{INGRESS_ENTRY}}" + dep';
 
             # 2) Set window.BASE_PATH so JS API/WebSocket calls route
             #    through the ingress proxy.
             sub_filter "window.BASE_PATH = '/'" "window.BASE_PATH = '{{INGRESS_ENTRY}}'";
 
-            # 3) Convert absolute asset/static paths to relative in HTML
-            #    attributes and JS string literals.
-            sub_filter '"/assets/' '"assets/';
-            sub_filter "'/assets/" "'assets/";
-            sub_filter '"/static/' '"static/';
-            sub_filter "'/static/" "'static/";
-            sub_filter '"/favicon' '"favicon';
-            sub_filter "'/favicon" "'favicon";
-            sub_filter '"/healthz' '"healthz';
-            sub_filter "'/healthz" "'healthz";
+            # 3) Convert absolute asset/static paths to ingress-prefixed
+            #    absolute paths in HTML attributes and JS string literals.
+            #    Absolute paths are stable regardless of the current page URL.
+            sub_filter '"/assets/' '"{{INGRESS_ENTRY}}assets/';
+            sub_filter "'/assets/" "'{{INGRESS_ENTRY}}assets/";
+            sub_filter '"/static/' '"{{INGRESS_ENTRY}}static/';
+            sub_filter "'/static/" "'{{INGRESS_ENTRY}}static/";
+            sub_filter '"/favicon' '"{{INGRESS_ENTRY}}favicon';
+            sub_filter "'/favicon" "'{{INGRESS_ENTRY}}favicon";
+            sub_filter '"/healthz' '"{{INGRESS_ENTRY}}healthz';
+            sub_filter "'/healthz" "'{{INGRESS_ENTRY}}healthz";
 
             # 4) CSS url() references (unquoted)
-            sub_filter "url(/assets/" "url(assets/";
-            sub_filter "url(/static/" "url(static/";
+            sub_filter "url(/assets/" "url({{INGRESS_ENTRY}}assets/";
+            sub_filter "url(/static/" "url({{INGRESS_ENTRY}}static/";
 
             # Disable buffering for streaming/SSE
             proxy_buffering off;

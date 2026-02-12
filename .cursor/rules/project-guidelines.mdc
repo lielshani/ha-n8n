@@ -1,0 +1,16 @@
+---
+description: ha-n8n Home Assistant add-on project guidelines
+alwaysApply: true
+---
+
+# ha-n8n Project Guidelines
+
+## After Completing a Task
+
+1. **Run tests**: Build the Docker image and run the test suite
+   ```bash
+   docker build --build-arg BUILD_FROM=docker.n8n.io/n8nio/n8n:latest --build-arg BUILD_ARCH=amd64 -t ha-n8n-test:local n8n/
+   ./n8n/tests/run_tests.sh
+   ```
+2. **Fix any failures** before proceeding
+3. **Commit and push** — but only when the change includes a version upgrade (bumps in `config.yaml`, `Dockerfile`, `run.sh`)

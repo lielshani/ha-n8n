@@ -1,6 +1,6 @@
 ---
 name: "n8n"
-version: "1.0.11"
+version: "1.0.12"
 slug: "ha_n8n"
 description: "Self-hosted n8n workflow automation for Home Assistant"
 url: "https://github.com/lielshani/ha-n8n"
