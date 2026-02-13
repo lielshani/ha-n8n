@@ -11,7 +11,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0. Startup banner — versions & diagnostics (logged before anything else)
 # ---------------------------------------------------------------------------
-ADDON_VERSION="1.0.12"
+ADDON_VERSION="1.0.13"
 
 echo "==========================================================="
 echo " Home Assistant Add-on: n8n"
@@ -133,7 +133,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # 5. nginx ingress proxy
-#    Generate nginx config from template, replacing {{INGRESS_ENTRY}}.
+#    Generate nginx config from template, replacing ${INGRESS_ENTRY}.
 #    nginx on port 5678 re-adds the ingress prefix that HA strips, then
 #    proxies to n8n on 5679.
 # ---------------------------------------------------------------------------
@@ -141,8 +141,8 @@ NGINX_CONF="/etc/nginx/nginx.conf"
 NGINX_TEMPLATE="/etc/nginx/nginx.conf.template"
 
 if [[ -n "${INGRESS_ENTRY}" && -f "${NGINX_TEMPLATE}" ]]; then
-    sed "s|{{INGRESS_ENTRY}}|${INGRESS_ENTRY}|g" \
-        "${NGINX_TEMPLATE}" > "${NGINX_CONF}"
+    export INGRESS_ENTRY
+    envsubst '${INGRESS_ENTRY}' < "${NGINX_TEMPLATE}" > "${NGINX_CONF}"
     log_info "nginx config generated for ingress proxy"
     USE_NGINX=true
 else
@@ -155,6 +155,9 @@ fi
 #    Format per entry: "KEY: value"
 # ---------------------------------------------------------------------------
 ENV_COUNT="$(jq -r '.env_vars_list | length' "${OPTIONS_FILE}")"
+
+# Vars that must not be overridden by user config (security-sensitive)
+PROTECTED_VARS="PATH LD_PRELOAD LD_LIBRARY_PATH NODE_OPTIONS HOME USER SHELL SUPERVISOR_TOKEN"
 
 if [[ "${ENV_COUNT}" -gt 0 ]]; then
     log_info "Processing ${ENV_COUNT} user-defined environment variable(s)..."
@@ -171,6 +174,14 @@ if [[ "${ENV_COUNT}" -gt 0 ]]; then
             continue
         fi
 
+        # Block protected system/runtime variables
+        for pvar in ${PROTECTED_VARS}; do
+            if [[ "${key}" == "${pvar}" ]]; then
+                log_warning "Skipping protected env var: ${key}"
+                continue 2
+            fi
+        done
+
         export "${key}=${value}"
         log_info "Exported env var: ${key}"
     done
@@ -182,6 +193,11 @@ fi
 CMD_ARGS="$(jq -r '.cmd_line_args // empty' "${OPTIONS_FILE}")"
 
 if [[ -n "${CMD_ARGS}" ]]; then
+    # Runtime guard: reject shell metacharacters in cmd_line_args
+    if [[ "${CMD_ARGS}" =~ [^a-zA-Z0-9\ :._/-] ]]; then
+        log_error "cmd_line_args contains invalid characters — aborting"
+        exit 1
+    fi
     log_info "Command-line args: ${CMD_ARGS}"
 fi
 

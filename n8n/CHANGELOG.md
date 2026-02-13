@@ -3,6 +3,29 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.13] - 2026-02-13
+
+### Security
+
+- **cmd_line_args validation**: Added schema regex and runtime guard to reject
+  shell metacharacters, preventing potential command injection.
+- **Protected env vars denylist**: `PATH`, `LD_PRELOAD`, `LD_LIBRARY_PATH`,
+  `NODE_OPTIONS`, `HOME`, `USER`, `SHELL`, and `SUPERVISOR_TOKEN` can no
+  longer be overridden via `env_vars_list`.
+- **nginx runs as non-root**: Dedicated `nginx` user created in the Docker
+  image; nginx drops privileges from root to this user.
+- **Rate limiting**: nginx ingress proxy now enforces 30 req/s per IP with
+  burst of 50 and a 50 MB request body size limit.
+- **Access logging**: nginx access log enabled (stdout) for audit trail.
+- **Security headers**: `X-Content-Type-Options`, `X-Frame-Options`, and
+  `Referrer-Policy` headers added to all nginx responses.
+- **Safe template substitution**: Replaced `sed` with `envsubst` for nginx
+  config generation, avoiding potential delimiter injection.
+- **Pinned base image**: n8n base image pinned to `2.6.4` instead of `latest`.
+- **Pinned CI actions**: GitHub Actions pinned by commit SHA.
+- **Secure cookie docs**: Added security notes section to DOCS.md documenting
+  `N8N_SECURE_COOKIE` default and how to enable TLS cookies.
+
 ## [1.0.12] - 2026-02-12
 
 ### Fixed

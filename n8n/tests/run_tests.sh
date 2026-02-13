@@ -246,7 +246,7 @@ assert_output "Banner shows n8n version"      "n8n version"   echo "${BANNER_OUT
 assert_output "Banner shows Node.js version"  "Node.js"       echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Architecture"     "Architecture"  echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Startup time"     "Startup time"  echo "${BANNER_OUTPUT}"
-assert_output "Banner shows version 1.0.12"    "1.0.12"         echo "${BANNER_OUTPUT}"
+assert_output "Banner shows version 1.0.13"    "1.0.13"         echo "${BANNER_OUTPUT}"
 
 echo ""
 
@@ -273,6 +273,9 @@ assert "nginx.conf.template present" \
 
 assert "nginx.conf.template has INGRESS_ENTRY placeholder" \
     docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "grep -q 'INGRESS_ENTRY' /etc/nginx/nginx.conf.template"
+
+assert "envsubst binary exists in image" \
+    docker run --rm --entrypoint /bin/sh "${IMAGE}" -c "command -v envsubst"
 
 echo ""
 

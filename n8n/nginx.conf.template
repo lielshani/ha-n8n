@@ -1,4 +1,4 @@
-user root;
+user nginx;
 worker_processes 1;
 pid /var/run/nginx.pid;
 error_log /dev/stderr warn;
@@ -10,7 +10,13 @@ events {
 http {
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
-    access_log off;
+    access_log /dev/stdout combined;
+
+    # Request size limit (accommodates n8n file uploads)
+    client_max_body_size 50m;
+
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=ingress:10m rate=30r/s;
 
     map $http_upgrade $connection_upgrade {
         default upgrade;
@@ -21,11 +27,18 @@ http {
         listen 5678 default_server;
         server_name _;
 
+        # Security headers
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
         # HA ingress strips the /api/hassio_ingress/<token> prefix before
         # forwarding to us.  n8n serves everything at / as normal.
         # We use sub_filter to rewrite response bodies so the browser
         # resolves paths through the ingress proxy.
         location / {
+            limit_req zone=ingress burst=50 nodelay;
+
             proxy_pass         http://127.0.0.1:5680;
             proxy_http_version 1.1;
             proxy_read_timeout 86400s;
@@ -59,27 +72,27 @@ http {
             #    Using relative paths ("./" + dep) breaks when the page URL has
             #    sub-paths, because the browser resolves relative to the current
             #    URL directory — not the ingress root.
-            sub_filter 'return "/" + dep' 'return "{{INGRESS_ENTRY}}" + dep';
+            sub_filter 'return "/" + dep' 'return "${INGRESS_ENTRY}" + dep';
 
             # 2) Set window.BASE_PATH so JS API/WebSocket calls route
             #    through the ingress proxy.
-            sub_filter "window.BASE_PATH = '/'" "window.BASE_PATH = '{{INGRESS_ENTRY}}'";
+            sub_filter "window.BASE_PATH = '/'" "window.BASE_PATH = '${INGRESS_ENTRY}'";
 
             # 3) Convert absolute asset/static paths to ingress-prefixed
             #    absolute paths in HTML attributes and JS string literals.
             #    Absolute paths are stable regardless of the current page URL.
-            sub_filter '"/assets/' '"{{INGRESS_ENTRY}}assets/';
-            sub_filter "'/assets/" "'{{INGRESS_ENTRY}}assets/";
-            sub_filter '"/static/' '"{{INGRESS_ENTRY}}static/';
-            sub_filter "'/static/" "'{{INGRESS_ENTRY}}static/";
-            sub_filter '"/favicon' '"{{INGRESS_ENTRY}}favicon';
-            sub_filter "'/favicon" "'{{INGRESS_ENTRY}}favicon";
-            sub_filter '"/healthz' '"{{INGRESS_ENTRY}}healthz';
-            sub_filter "'/healthz" "'{{INGRESS_ENTRY}}healthz";
+            sub_filter '"/assets/' '"${INGRESS_ENTRY}assets/';
+            sub_filter "'/assets/" "'${INGRESS_ENTRY}assets/";
+            sub_filter '"/static/' '"${INGRESS_ENTRY}static/';
+            sub_filter "'/static/" "'${INGRESS_ENTRY}static/";
+            sub_filter '"/favicon' '"${INGRESS_ENTRY}favicon';
+            sub_filter "'/favicon" "'${INGRESS_ENTRY}favicon";
+            sub_filter '"/healthz' '"${INGRESS_ENTRY}healthz';
+            sub_filter "'/healthz" "'${INGRESS_ENTRY}healthz";
 
             # 4) CSS url() references (unquoted)
-            sub_filter "url(/assets/" "url({{INGRESS_ENTRY}}assets/";
-            sub_filter "url(/static/" "url({{INGRESS_ENTRY}}static/";
+            sub_filter "url(/assets/" "url(${INGRESS_ENTRY}assets/";
+            sub_filter "url(/static/" "url(${INGRESS_ENTRY}static/";
 
             # Disable buffering for streaming/SSE
             proxy_buffering off;

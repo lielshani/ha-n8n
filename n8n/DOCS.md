@@ -147,6 +147,21 @@ to **disabled** if you only want access through Ingress.
 **Direct access is also required for webhooks** — external services need
 to reach n8n without going through HA Ingress.
 
+### Security notes
+
+By default, `N8N_SECURE_COOKIE` is set to `false` so that n8n works over
+plain HTTP on your local network. This means session cookies are sent
+unencrypted, which is fine on a trusted home LAN.
+
+If you access n8n over an **untrusted or shared network**, you should set
+up TLS (e.g. via the [Cloudflared add-on][cloudflared] or a reverse
+proxy with a certificate) and then enable secure cookies:
+
+```yaml
+env_vars_list:
+  - "N8N_SECURE_COOKIE: true"
+```
+
 ## Installing external npm packages
 
 n8n supports external npm packages in the Code node. To allow specific

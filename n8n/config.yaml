@@ -1,6 +1,6 @@
 ---
 name: "n8n"
-version: "1.0.12"
+version: "1.0.13"
 slug: "ha_n8n"
 description: "Self-hosted n8n workflow automation for Home Assistant"
 url: "https://github.com/lielshani/ha-n8n"
@@ -72,4 +72,4 @@ schema:
   timezone: "str?"
   env_vars_list:
     - "match(^[A-Z_0-9]+: .*$)"
-  cmd_line_args: "str?"
+  cmd_line_args: "match(^[a-zA-Z0-9 :._/-]*$)?"

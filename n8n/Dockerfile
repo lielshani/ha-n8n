@@ -13,7 +13,7 @@ ARG BUILD_FROM
 # ---------- Stage 1: HA integration dependencies --------------------------
 FROM alpine:3.22 AS ha-deps
 
-RUN apk add --no-cache bash jq curl nginx \
+RUN apk add --no-cache bash jq curl nginx gettext \
     && curl -sL -o /tmp/bashio.tar.gz \
         "https://github.com/hassio-addons/bashio/archive/refs/tags/v0.16.2.tar.gz" \
     && mkdir -p /tmp/bashio \
@@ -53,6 +53,14 @@ RUN apk add --no-cache bash jq curl nginx \
            true; \
        done \
     && cp /etc/nginx/mime.types /export/etc/nginx/ 2>/dev/null || true \
+    # envsubst (for safe nginx template substitution)
+    && ENVSUBST_BIN="$(which envsubst)" \
+    && cp "$ENVSUBST_BIN" /export/usr/bin/envsubst \
+    && ldd "$ENVSUBST_BIN" | awk '/=>/{print $3}' | while read -r lib; do \
+           [ -f "$lib" ] && cp -n "$lib" /export/lib/ 2>/dev/null; \
+           [ -f "$lib" ] && cp -n "$lib" /export/usr/lib/ 2>/dev/null; \
+           true; \
+       done \
     # also grab ca-certificates for HTTPS
     && mkdir -p /export/etc/ssl \
     && cp -r /etc/ssl/certs /export/etc/ssl/ \
@@ -66,7 +74,7 @@ RUN apk add --no-cache bash jq curl nginx \
 # ---------- Stage 2: Final image ------------------------------------------
 FROM $BUILD_FROM
 
-ARG BUILD_VERSION=1.0.12
+ARG BUILD_VERSION=1.0.13
 ARG BUILD_ARCH
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
@@ -80,6 +88,11 @@ COPY --from=ha-deps /export/ /
 
 # Persistent storage for HA
 RUN mkdir -p /data
+
+# Dedicated nginx user (nginx drops privileges from root to this user)
+RUN addgroup -S nginx 2>/dev/null || true \
+    && adduser -S -G nginx nginx 2>/dev/null || true \
+    && chown -R nginx:nginx /var/log/nginx /var/lib/nginx
 
 # Entrypoint
 # Strategy: overwrite the n8n image's /docker-entrypoint.sh with our run.sh.
