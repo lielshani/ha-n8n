@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: n8n
+          load: true
+          tags: ha-n8n-test:local
+          build-args: |
+            BUILD_FROM=docker.n8n.io/n8nio/n8n:latest
+            BUILD_ARCH=amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run tests
+        run: ./n8n/tests/run_tests.sh

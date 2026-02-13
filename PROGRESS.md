@@ -11,6 +11,7 @@
 - **Documentation** — README (GitHub), DOCS.md (HA UI), CHANGELOG
 - **Test suite** — 53 assertions across 6 suites (structure, config, image, env logic, banner, health)
 - **Zero-config install** — works out of the box; timezone auto-detected from HA
+- **Automated CI** — GitHub Actions for build/test on push
 
 ## In Progress
 
@@ -20,5 +21,4 @@
 
 - **Ingress path rewriting** — n8n may need `N8N_EDITOR_BASE_URL` for HA ingress proxy
 - **Webhook support** — document/configure external webhook URL passthrough
-- **Automated CI** — GitHub Actions for build/test on push
 - **Add-on logo/icon** — `n8n/icon.png` and `n8n/logo.png` for the HA store

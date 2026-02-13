@@ -246,7 +246,7 @@ assert_output "Banner shows n8n version"      "n8n version"   echo "${BANNER_OUT
 assert_output "Banner shows Node.js version"  "Node.js"       echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Architecture"     "Architecture"  echo "${BANNER_OUTPUT}"
 assert_output "Banner shows Startup time"     "Startup time"  echo "${BANNER_OUTPUT}"
-assert_output "Banner shows version 1.0.11"    "1.0.11"         echo "${BANNER_OUTPUT}"
+assert_output "Banner shows version 1.0.12"    "1.0.12"         echo "${BANNER_OUTPUT}"
 
 echo ""
 
