@@ -3,6 +3,27 @@
 All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.14] - 2026-02-13
+
+### Fixed
+
+- **Ingress blank page**: Removed `X-Frame-Options` header that blocked
+  HA's ingress iframe, and removed rate limiting that rejected burst
+  requests during n8n's initial SPA load (all ingress traffic comes from
+  the Supervisor's single IP, making per-IP rate limits counterproductive).
+
+### Changed
+
+- **Direct access is the recommended way to use n8n.** Ingress (HA sidebar)
+  is still available as a convenience, but n8n is a complex single-page
+  application that is not designed to be proxied behind a path prefix.
+  Direct access at `http://<your-ha-ip>:5678/` provides the most reliable
+  experience — including OAuth, webhooks, and all editor features.
+- **Cloudflare Tunnel documentation**: Added instructions for secure remote
+  access via Cloudflare Tunnel, including the `N8N_EDITOR_BASE_URL` and
+  `N8N_SECURE_COOKIE` environment variables needed to avoid Chrome security
+  warnings.
+
 ## [1.0.13] - 2026-02-13
 
 ### Security

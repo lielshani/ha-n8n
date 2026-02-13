@@ -38,13 +38,11 @@ installing any other Home Assistant add-on.
 
 ## How it works
 
-This add-on runs n8n inside your Home Assistant instance using
-[Ingress](https://www.home-assistant.io/blog/2019/04/15/hassio-ingress/),
-meaning:
+This add-on runs n8n inside your Home Assistant instance:
 
-- The n8n editor is accessible directly from the Home Assistant sidebar.
-- All traffic is authenticated through Home Assistant — no extra passwords
-  needed to reach the UI.
+- n8n is accessible at `http://<your-ha-ip>:5678/` on your local network
+  and through the HA sidebar via Ingress.
+- n8n has its own authentication — create an admin account on first launch.
 - Your workflows, credentials, and execution history are stored locally in
   `/data`, which is persisted and included in Home Assistant backups.
 
@@ -93,74 +91,40 @@ advanced option. Most users should leave this empty.
 cmd_line_args: "start --tunnel"
 ```
 
-## Webhooks & external access
+## Accessing n8n
 
-The n8n UI is served through Home Assistant Ingress, which means it is
-protected by Home Assistant authentication. This is great for security but
-means **webhooks cannot go through Ingress** — they need to be publicly
-accessible without authentication.
+### Local network (LAN)
 
-### Setting up webhooks
-
-To use webhook-based triggers and the n8n API:
-
-1. Make sure direct access is enabled (port 5678 — see above), then expose
-   it through a tunnel to the internet. The recommended approach is the
-   [Cloudflared add-on][cloudflared] or a similar reverse proxy / tunnel.
-2. Set the `WEBHOOK_URL` environment variable to the public URL of the
-   tunnel:
-
-   ```yaml
-   env_vars_list:
-     - "WEBHOOK_URL: https://n8n.your-domain.com"
-   ```
-
-3. Restart the add-on.
-
-### Nabu Casa
-
-If you use [Nabu Casa](https://www.nabucasa.com/) remote access, set the
-`EXTERNAL_URL` environment variable to your Nabu Casa URL for OAuth2
-redirect URLs to work properly:
-
-```yaml
-env_vars_list:
-  - "EXTERNAL_URL: https://xxxxxxxx.ui.nabu.casa"
-```
-
-### Direct access (LAN)
-
-By default, n8n is also accessible directly from your local network at:
+n8n is accessible directly from any device on your local network at:
 
 ```
 http://<your-home-assistant-ip>:5678/
 ```
 
-This bypasses Home Assistant Ingress and lets you use n8n from any browser
-on your LAN — no HA login needed. n8n has its own authentication (the
-admin account you created during setup), so access is still protected.
+n8n has its own authentication (the admin account you created during
+setup), so access is protected. You can also click **OPEN WEB UI** in
+the add-on panel or use the sidebar link.
 
-This port mapping is configured under **Settings** > **Add-ons** > **n8n**
-> **Configuration** > **Network**. You can change the host port or set it
-to **disabled** if you only want access through Ingress.
+The port is configured under **Settings** > **Add-ons** > **n8n** >
+**Configuration** > **Network**.
 
-**Direct access is also required for webhooks** — external services need
-to reach n8n without going through HA Ingress.
+### Remote access (Cloudflare Tunnel)
 
-### Security notes
+To access n8n from outside your home network, expose it through a
+[Cloudflare Tunnel][cloudflared] (e.g. `n8n.your-domain.com`).
 
-By default, `N8N_SECURE_COOKIE` is set to `false` so that n8n works over
-plain HTTP on your local network. This means session cookies are sent
-unencrypted, which is fine on a trusted home LAN.
-
-If you access n8n over an **untrusted or shared network**, you should set
-up TLS (e.g. via the [Cloudflared add-on][cloudflared] or a reverse
-proxy with a certificate) and then enable secure cookies:
+After setting up the tunnel, add these environment variables so n8n
+works correctly over HTTPS:
 
 ```yaml
 env_vars_list:
+  - "WEBHOOK_URL: https://n8n.your-domain.com"
+  - "N8N_EDITOR_BASE_URL: https://n8n.your-domain.com"
   - "N8N_SECURE_COOKIE: true"
 ```
+
+> Without `N8N_EDITOR_BASE_URL`, n8n does not know it is behind HTTPS
+> and Chrome will show a security warning.
 
 ## Installing external npm packages
 

@@ -11,7 +11,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # 0. Startup banner — versions & diagnostics (logged before anything else)
 # ---------------------------------------------------------------------------
-ADDON_VERSION="1.0.13"
+ADDON_VERSION="1.0.14"
 
 echo "==========================================================="
 echo " Home Assistant Add-on: n8n"
